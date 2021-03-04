@@ -1,22 +1,21 @@
-import React, { useState } from "react";
-import * as sessionActions from "../../store/session";
-import { useDispatch } from "react-redux";
-import "./LoginForm.css";
+import React, { useState } from 'react';
+import * as sessionActions from '../../store/session';
+import { useDispatch } from 'react-redux';
+import './LoginForm.css';
 
 function LoginForm() {
   const dispatch = useDispatch();
-  const [credential, setCredential] = useState("");
-  const [password, setPassword] = useState("");
+  const [credential, setCredential] = useState('');
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState([]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setErrors([]);
-    return dispatch(sessionActions.login({ credential, password })).catch(
-      (res) => {
-        if (res.data && res.data.errors) setErrors(res.data.errors);
-      }
-    );
+
+    sessionActions.login({ credential, password }, dispatch).catch((res) => {
+      if (res.data && res.data.errors) setErrors(res.data.errors);
+    });
   };
 
   return (
@@ -31,7 +30,7 @@ function LoginForm() {
         <label>
           Username or Email
           <input
-            type="text"
+            type='text'
             value={credential}
             onChange={(e) => setCredential(e.target.value)}
             required
@@ -40,13 +39,13 @@ function LoginForm() {
         <label>
           Password
           <input
-            type="password"
+            type='password'
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
         </label>
-        <button type="submit">Log In</button>
+        <button type='submit'>Log In</button>
       </form>
     </>
   );
