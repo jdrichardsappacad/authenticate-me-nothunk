@@ -86,6 +86,10 @@ JWT_EXPIRES_IN=604800
 
 Assign `PORT` to `5000`, add a user password and a strong JWT secret.
 
+> Recommendation to generate a strong secret: create a random string using
+> `openssl` (a library that should be installed in your Ubuntu/MacOS shell
+> already). Run `openssl rand -base64 10` to generate a random JWT secret.
+
 Next, you will create a `js` configuration file that will read the environment
 variables loaded and export them.
 
@@ -101,12 +105,12 @@ module.exports = {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST,
+    host: process.env.DB_HOST
   },
   jwtConfig: {
     secret: process.env.JWT_SECRET,
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  },
+    expiresIn: process.env.JWT_EXPIRES_IN
+  }
 };
 ```
 
@@ -129,7 +133,7 @@ module.exports = {
   config: path.resolve('config', 'database.js'),
   'models-path': path.resolve('db', 'models'),
   'seeders-path': path.resolve('db', 'seeders'),
-  'migrations-path': path.resolve('db', 'migrations'),
+  'migrations-path': path.resolve('db', 'migrations')
 };
 ```
 
@@ -159,18 +163,24 @@ module.exports = {
     database,
     host,
     dialect: 'postgres',
-    seederStorage: "sequelize",
+    seederStorage: 'sequelize'
   },
   production: {
     use_env_variable: 'DATABASE_URL',
     dialect: 'postgres',
     seederStorage: 'sequelize',
-  },
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    }
+  }
 };
 ```
 
-This will allow you to use the database configuration loaded from the `.env`
-file into `config/index.js`.
+This will allow you to load the database configuration environment variables
+from the `.env` file into the `config/index.js`.
 
 Notice how the `production` database configuration has different keys than the
 `development` configuration? When you deploy your application to production,
@@ -264,18 +274,20 @@ if (!isProduction) {
   app.use(cors());
 }
 // helmet helps set a variety of headers to better secure your app
-app.use(helmet({
-  contentSecurityPolicy: false
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: false
+  })
+);
 
 // Set the _csrf token and create req.csrfToken method
 app.use(
   csurf({
     cookie: {
       secure: isProduction,
-      sameSite: isProduction && "Lax",
-      httpOnly: true,
-    },
+      sameSite: isProduction && 'Lax',
+      httpOnly: true
+    }
   })
 );
 ```
@@ -286,7 +298,7 @@ requests (`req.csrfToken`) that will be set to another cookie (`XSRF-TOKEN`)
 later on. These two cookies work together to provide CSRF (Cross-Site Request
 Forgery) protection for your application. The `XSRF-TOKEN` cookie value needs to
 be sent in the header of any request with all HTTP verbs besides `GET`. This
-header will be used to validate the `_csrf` cookie to confirm that that the
+header will be used to validate the `_csrf` cookie to confirm that the
 request comes from your site and not an unauthorized site.
 
 Now that you set up all the pre-request middleware, it's time to set up the
@@ -306,7 +318,7 @@ file.
 const express = require('express');
 const router = express.Router();
 
-router.get('/hello/world', function(req, res) {
+router.get('/hello/world', function (req, res) {
   res.cookie('XSRF-TOKEN', req.csrfToken());
   res.send('Hello World!');
 });
@@ -402,8 +414,8 @@ in the `.env` file, which should be `5000`.
 Navigate to the test route at [http://localhost:5000/hello/world]. There, you
 should see the text `Hello World!`. Take a look at your cookies. Delete all the
 cookies to make sure there are no lingering cookies from other projects, then
-refresh the page. You should still see the text `Hello World!` on the page and
-two cookies, one called `_csrf` and the other called `XSRF-TOKEN`.
+refresh the page. You should still see the text `Hello World!` on the page as well as
+two cookies, one called `_csrf` and the other called `XSRF-TOKEN` in your dev tools.
 
 If you don't see this, then check your backend server logs in your terminal
 where you ran `npm start`. Then check your routes.
@@ -441,18 +453,18 @@ router.use('/api', apiRouter);
 // ...
 ```
 
-All the URL's of the routes in the `api` router will be prefixed with `/api`.
+All the URLs of the routes in the `api` router will be prefixed with `/api`.
 
 ### Test the API Router
 
-Make sure to test this set up by creating the following test route in the
+Make sure to test this setup by creating the following test route in the
 `api` router:
 
 ```js
 // backend/routes/api/index.js
 // ...
 
-router.post('/test', function(req, res) {
+router.post('/test', function (req, res) {
   res.json({ requestBody: req.body });
 });
 
@@ -461,51 +473,51 @@ router.post('/test', function(req, res) {
 
 A router is created and an API test route is added to the router. The API test
 route is accepting requests with the URL path of `/api/test` with the HTTP verb
-of `POST`. It sends a JSON response of whatever is in the body of the request.
+of `POST`. It sends a JSON response containing whatever is in the body of the request.
 
 Test this route by navigating to the other test route,
 [http://localhost:5000/hello/world], and creating a `fetch` request in the
 browser's development tools console. Make a request to `/api/test` with the
 `POST` method, a body of `{ hello: 'world' }`, a `"Content-Type"` header, and
-an `XSRF-TOKEN` header with the value of the `XSRF-TOKEN` cookie.
+an `XSRF-TOKEN` header with the value of the `XSRF-TOKEN` cookie located in your dev tools.
 
 Example fetch request:
 
 ```js
 fetch('/api/test', {
-  method: "POST",
+  method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({ hello: 'world' })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 Replace the `<value of XSRF-TOKEN cookie>` with the value of the `XSRF-TOKEN`
 cookie. If you don't have the `XSRF-TOKEN` cookie anymore, access the
 [http://localhost:5000/hello/world] route to add the cookie back.
 
-After the response gets back to the browser, parse the JSON response body and
+After the response returns to the browser, parse the JSON response body and
 print it out.
 
 If you get an error, check your backend server logs in your terminal where you
-ran `npm start`. Check your `fetch` request syntax and your API router set up.
+ran `npm start`. Also, check your `fetch` request syntax and your API router setup.
 
 After you finish testing, commit your code!
 
 ## Phase 2: Error Handling
 
-The next step is setting up your server error handlers. You will be connecting
-middleware after you connect your routes to handle server errors.
+The next step is to set up your server error handlers.
 
-Connect the following error handling middlewares after you connect all the
-routes in `app.js` (after `app.use(routes)`). See here for a refresher on how to
+Connect the following error handling middlewares after your route connections in `app.js` (i.e. after `app.use(routes)`). Here is a refresher on how to
 create an [Express error-handling middleware].
 
 ### Resource Not Found Error-Handler
 
-The first error handler is actually just a regular middleware that will catch
+The first error handler is actually just a regular middleware. It will catch
 any requests that don't match any of the routes defined and create a server
 error with a status code of `404`.
 
@@ -515,24 +527,23 @@ error with a status code of `404`.
 // Catch unhandled requests and forward to error handler.
 app.use((_req, _res, next) => {
   const err = new Error("The requested resource couldn't be found.");
-  err.title = "Resource Not Found";
+  err.title = 'Resource Not Found';
   err.errors = ["The requested resource couldn't be found."];
   err.status = 404;
   next(err);
 });
 ```
 
-If this resource not found middleware is called, then an error will be created
+If this resource not found middleware is called, an error will be created
 with the message `"The requested resource couldn't be found."` and a status
-code of `404`. Then, `next` is invoked with the error. Remember, `next` invoked
-with nothing means error handlers defined after this middleware will **not** be
-invoked. But `next` invoked with an error means that error handlers defined
-after this middleware will be invoked.
+code of `404`. Afterwards, `next` will be invoked with the error. Remember, `next` invoked
+with nothing means that error handlers defined **after** this middleware **will not** be
+invoked. However, `next` invoked with an error means that error handlers defined
+**after** this middleware **will** be invoked.
 
 ### Sequelize Error-Handler
 
-The second error handler is for catching Sequelize errors and formatting it to
-make it look pretty before sending the error response.
+The second error handler is for catching Sequelize errors and formatting them before sending the error response.
 
 ```js
 // backend/app.js
@@ -561,7 +572,7 @@ handling middleware.
 ### Error Formatter Error-Handler
 
 The last error handler is for formatting all the errors before returning a JSON
-response with the error message, the errors array, and the error stack trace (if
+response. It will include the error message, the errors array, and the error stack trace (if
 the environment is in development) with the status code of the error message.
 
 ```js
@@ -575,12 +586,12 @@ app.use((err, _req, res, _next) => {
     title: err.title || 'Server Error',
     message: err.message,
     errors: err.errors,
-    stack: isProduction ? null : err.stack,
+    stack: isProduction ? null : err.stack
   });
 });
 ```
 
-This should be the last middleware for your Express application.
+This should be the last middleware in the `app.js` file of your Express application.
 
 ### Testing the Error Handlers
 
@@ -591,35 +602,33 @@ error handler and the Error Formatter error handler.
 To do this, try to access a route that hasn't been defined in your `routes`
 folder yet, like [http://localhost:5000/not-found].
 
-If you see the following message, then you successfully set up your _Resource
+If you see the json below, you have successfully set up your _Resource
 Not Found_ and Error Formatter error handlers!
 
 ```json
 {
   "title": "Resource Not Found",
   "message": "The requested resource couldn't be found.",
-  "errors": [
-    "The requested resource couldn't be found."
-  ],
+  "errors": ["The requested resource couldn't be found."],
   "stack": "...stack trace..."
 }
 ```
 
-If you don't see this, check your backend server logs in your terminal where you
+If you don't see the json above, check your backend server logs in your terminal where you
 ran `npm start`.
 
 Make sure your other test route at [http://localhost:5000/hello/world] is still
-working. If it's not, make sure you are defining your error handlers **after**
-you connect the routes to `app` (`app.use(routes)`).
+working. If it is not working, make sure you are defining your error handlers **after**
+your route connections in `app.js` (i.e. after `app.use(routes)`).
 
-You will test out the Sequelize error handler later when you populate the
+You will test the Sequelize error handler later when you populate the
 database with a table.
 
 Before moving onto the next task, commit your error handling code!
 
 ## Phase 3: User Authentication
 
-Now that you finished setting up Sequelize and the Express application, you are
+Now that you have finished setting up both Sequelize and the Express application, you are
 ready to start implementing user authentication in the backend.
 
 With Sequelize, you will create a `Users` table that will have the following
@@ -646,8 +655,7 @@ npx sequelize model:generate --name User --attributes username:string,email:stri
 This will create a file in your `backend/db/migrations` folder and a file called
 `user.js` in your `backend/db/models` folder.
 
-In the migration file, apply the constraints in the schema. Once you're
-finished, your migration file should look something like this:
+In the migration file, apply the constraints in the schema. If completed correctly, your migration file should look something like this:
 
 ```js
 'use strict';
@@ -663,26 +671,26 @@ module.exports = {
       username: {
         type: Sequelize.STRING(30),
         allowNull: false,
-        unique: true,
+        unique: true
       },
       email: {
         type: Sequelize.STRING(256),
         allowNull: false,
-        unique: true,
+        unique: true
       },
       hashedPassword: {
         type: Sequelize.STRING.BINARY,
-        allowNull: false,
+        allowNull: false
       },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('now'),
+        defaultValue: Sequelize.fn('now')
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('now'),
+        defaultValue: Sequelize.fn('now')
       }
     });
   },
@@ -698,10 +706,9 @@ Migrate the `Users` table by running the following command:
 npx dotenv sequelize db:migrate
 ```
 
-If there is an error with migrating, check your migration file and make changes.
+If there is an error when migrating, check your migration file and make changes.
 
-If there is no error in migrating but you want to change the migration file,
-remember to undo the migration first, change the file, then migrate again.
+If there is no error when migrating, but you want to change the migration file afterwards, undo the migration first, change the file, then migrate again.
 
 Command to undo the migration:
 
@@ -719,7 +726,7 @@ psql <database name> -c '\d "Users"'
 ### User Model
 
 After you migrate the `Users` table with the database-level constraints, you
-need add Sequelize model-level constraints. In your `User` model file,
+need to add Sequelize model-level constraints. In your `User` model file,
 `backend/db/models/user.js`, add the following constraints:
 
 | column name      |   data type   | constraints                                                       |
@@ -738,35 +745,39 @@ Your `user.js` file should look like this with the applied constraints:
 const { Validator } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [4, 30],
-        isNotEmail(value) {
-          if (Validator.isEmail(value)) {
-            throw new Error('Cannot be an email.');
+  const User = sequelize.define(
+    'User',
+    {
+      username: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+          len: [4, 30],
+          isNotEmail(value) {
+            if (Validator.isEmail(value)) {
+              throw new Error('Cannot be an email.');
+            }
           }
-        },
+        }
       },
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [3, 256]
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+          len: [3, 256]
+        }
       },
+      hashedPassword: {
+        type: DataTypes.STRING.BINARY,
+        allowNull: false,
+        validate: {
+          len: [60, 60]
+        }
+      }
     },
-    hashedPassword: {
-      type: DataTypes.STRING.BINARY,
-      allowNull: false,
-      validate: {
-        len: [60, 60]
-      },
-    },
-  }, {});
-  User.associate = function(models) {
+    {}
+  );
+  User.associate = function (models) {
     // associations can be defined here
   };
   return User;
@@ -781,16 +792,15 @@ with a message.
 
 ### Users Seeds
 
-Generate a users seeder file for the demo user with the following command:
+Generate a user's seeder file for the demo user with the following command:
 
 ```bash
 npx sequelize seed:generate --name demo-user
 ```
 
-In the seeder file, create a demo user with an `email`, `username`, and
+In the seeder file, create a demo user with `email`, `username`, and
 `hashedPassword` fields. For the `down` function, delete the user with the
-`username` or `email` of the demo user. You can also add in other users if you
-want to and populate the fields with random fake data from the `faker` package.
+`username` or `email` of the demo user. If you'd like, you can also add other users and populate the fields with random fake data from the `faker` package.
 To generate the `hashedPassword` you should use the `bcryptjs` package's
 `hashSync` method.
 
@@ -803,30 +813,38 @@ const bcrypt = require('bcryptjs');
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('Users', [
-      {
-        email: 'demo@user.io',
-        username: 'Demo-lition',
-        hashedPassword: bcrypt.hashSync('password'),
-      },
-      {
-        email: faker.internet.email(),
-        username: 'FakeUser1',
-        hashedPassword: bcrypt.hashSync(faker.internet.password()),
-      },
-      {
-        email: faker.internet.email(),
-        username: 'FakeUser2',
-        hashedPassword: bcrypt.hashSync(faker.internet.password()),
-      },
-    ], {});
+    return queryInterface.bulkInsert(
+      'Users',
+      [
+        {
+          email: 'demo@user.io',
+          username: 'Demo-lition',
+          hashedPassword: bcrypt.hashSync('password')
+        },
+        {
+          email: faker.internet.email(),
+          username: 'FakeUser1',
+          hashedPassword: bcrypt.hashSync(faker.internet.password())
+        },
+        {
+          email: faker.internet.email(),
+          username: 'FakeUser2',
+          hashedPassword: bcrypt.hashSync(faker.internet.password())
+        }
+      ],
+      {}
+    );
   },
 
   down: (queryInterface, Sequelize) => {
     const Op = Sequelize.Op;
-    return queryInterface.bulkDelete('Users', {
-      username: { [Op.in]: ['Demo-lition', 'FakeUser1', 'FakeUser2'] }
-    }, {});
+    return queryInterface.bulkDelete(
+      'Users',
+      {
+        username: { [Op.in]: ['Demo-lition', 'FakeUser1', 'FakeUser2'] }
+      },
+      {}
+    );
   }
 };
 ```
@@ -876,7 +894,7 @@ official documentation on [model scoping] to look up how to define a model scope
 to prevent certain fields from being sent in a query.
 
 For the default query when searching for `Users`, the `hashedPassword` and
-`updatedAt` (and, depending on your application, `email` and `createdAt`) fields
+`updatedAt` and, depending on your application, `email` and `createdAt` fields
 should not be returned. To do this, set a `defaultScope` on the `User` model to
 exclude the desired fields from the default query. For example, when you run
 `User.findAll()` all fields besides `hashedPasswords`, `updatedAt`, `email`, and
@@ -897,50 +915,53 @@ Your `user.js` model file should now look like this:
 const { Validator } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [3, 30],
-        isNotEmail(value) {
-          if (Validator.isEmail(value)) {
-            throw new Error('Cannot be an email.');
+  const User = sequelize.define(
+    'User',
+    {
+      username: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+          len: [3, 30],
+          isNotEmail(value) {
+            if (Validator.isEmail(value)) {
+              throw new Error('Cannot be an email.');
+            }
           }
+        }
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+          len: [3, 256]
+        }
+      },
+      hashedPassword: {
+        type: DataTypes.STRING.BINARY,
+        allowNull: false,
+        validate: {
+          len: [60, 60]
+        }
+      }
+    },
+    {
+      defaultScope: {
+        attributes: {
+          exclude: ['hashedPassword', 'email', 'createdAt', 'updatedAt']
+        }
+      },
+      scopes: {
+        currentUser: {
+          attributes: { exclude: ['hashedPassword'] }
         },
-      },
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [3, 256]
-      },
-    },
-    hashedPassword: {
-      type: DataTypes.STRING.BINARY,
-      allowNull: false,
-      validate: {
-        len: [60, 60]
-      },
-    },
-  },
-  {
-    defaultScope: {
-      attributes: {
-        exclude: ['hashedPassword', 'email', 'createdAt', 'updatedAt'],
-      },
-    },
-    scopes: {
-      currentUser: {
-        attributes: { exclude: ['hashedPassword'] },
-      },
-      loginUser: {
-        attributes: {},
-      },
-    },
-  });
-  User.associate = function(models) {
+        loginUser: {
+          attributes: {}
+        }
+      }
+    }
+  );
+  User.associate = function (models) {
     // associations can be defined here
   };
   return User;
@@ -948,7 +969,7 @@ module.exports = (sequelize, DataTypes) => {
 ```
 
 These scopes help protect sensitive user information that should not be
-exposed the current session's user or to other users. You will be using these
+exposed to other users. You will be using these
 scopes in the later sections.
 
 ### Authentication Flow
@@ -988,23 +1009,24 @@ for authentication will use to interact with the `Users` table. The planned
 methods are based off of the authentication flow plans outlined above.
 
 Define an instance method, `User.prototype.toSafeObject`, in the `user.js`
-model file that will return an object with the `User` instance information that
+model file. This method will return an object with only the `User` instance information that
 is safe to save to a JWT.
 
 ```js
-User.prototype.toSafeObject = function() { // remember, this cannot be an arrow function
+User.prototype.toSafeObject = function () {
+  // remember, this cannot be an arrow function
   const { id, username, email } = this; // context will be the User instance
   return { id, username, email };
 };
 ```
 
 Define an instance method, `User.prototype.validatePassword` in the `user.js`
-model file that will accept a `password` string and return `true` if there is a
-match with the `User` instance's `hashedPassword`, otherwise return `false`.
+model file. It will accept a `password` string and return `true` if there is a
+match with the `User` instance's `hashedPassword`, otherwise it will return `false`.
 
 ```js
 User.prototype.validatePassword = function (password) {
- return bcrypt.compareSync(password, this.hashedPassword.toString());
+  return bcrypt.compareSync(password, this.hashedPassword.toString());
 };
 ```
 
@@ -1017,21 +1039,18 @@ const bcrypt = require('bcryptjs');
 ```
 
 Define a static method, `User.getCurrentUserById` in the `user.js` model file
-that will accept an `id` and return a `User` with that `id` using the
-`currentUser` scope.
+that will accept an `id`. It should use the `currentUser` scope to return a `User` with that `id`.
 
 ```js
 User.getCurrentUserById = async function (id) {
- return await User.scope('currentUser').findByPk(id);
+  return await User.scope('currentUser').findByPk(id);
 };
 ```
 
-Define a static method, `User.login` in the `user.js` model file that will
-accept an object with a `credential` and `password` key and find a `User` with
-a `username` or `email` with the specified `credential` using the `loginUser`
-scope. If a user is found, then validate the `password` by passing it into the
+Define a static method, `User.login` in the `user.js` model file. It will
+accept an object with a `credential` and `password` key. The method should search for one `User` with the specified `credential`, (a `username` or an `email`). If a user is found, then validate the `password` by passing it into the
 instance's `.validatePassword` method. If the `password` is valid, then return
-the user with the `currentUser` scope.
+the user by using the `currentUser` scope.
 
 ```js
 User.login = async function ({ credential, password }) {
@@ -1040,9 +1059,9 @@ User.login = async function ({ credential, password }) {
     where: {
       [Op.or]: {
         username: credential,
-        email: credential,
-      },
-    },
+        email: credential
+      }
+    }
   });
   if (user && user.validatePassword(password)) {
     return await User.scope('currentUser').findByPk(user.id);
@@ -1053,7 +1072,7 @@ User.login = async function ({ credential, password }) {
 Define a static method, `User.signup` in the `user.js` model file that will
 accept an object with a `username`, `email` and `password` key. Hash the
 `password` using `bcryptjs` package's `hashSync` method. Create a `User` with
-the `username`, `email`, and `hashedPassword`. Return the created user with the
+the `username`, `email`, and `hashedPassword`. Return the created user using the
 `currentUser` scope.
 
 ```js
@@ -1062,7 +1081,7 @@ User.signup = async function ({ username, email, password }) {
   const user = await User.create({
     username,
     email,
-    hashedPassword,
+    hashedPassword
   });
   return await User.scope('currentUser').findByPk(user.id);
 };
@@ -1072,7 +1091,7 @@ User.signup = async function ({ username, email, password }) {
 
 There are three functions in this section that will aid you in authentication.
 
-Create a folder called `utils` in your `backend` folder. Add a file named
+Create a folder called `utils` in your `backend` folder. Inside that folder, add a file named
 `auth.js` to store the auth helper functions.
 
 At the top of the file, add the following imports:
@@ -1106,17 +1125,17 @@ const setTokenCookie = (res, user) => {
   const token = jwt.sign(
     { data: user.toSafeObject() },
     secret,
-    { expiresIn: parseInt(expiresIn) }, // 604,800 seconds = 1 week
+    { expiresIn: parseInt(expiresIn) } // 604,800 seconds = 1 week
   );
 
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // Set the token cookie
   res.cookie('token', token, {
     maxAge: expiresIn * 1000, // maxAge in milliseconds
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction && "Lax",
+    sameSite: isProduction && 'Lax'
   });
 
   return token;
@@ -1128,7 +1147,7 @@ This function will be used in the login and signup routes later.
 #### `restoreUser`
 
 Certain authenticated routes will require the identity of the current session
-user. You will create an utilize a middleware function called restoreUser that
+user. You will create and utilize a middleware function called restoreUser that
 will restore the session user based on the contents of the JWT cookie. Create a
 middleware function that will verify and parse the JWT's payload and search the
 database for a `User` with the id in the payload (this query should use the
@@ -1168,7 +1187,7 @@ const restoreUser = (req, res, next) => {
 This will be added as a pre-middleware for route handlers and for the following
 authentication middleware.
 
-#### `requireUser`
+#### `requireAuth`
 
 The last authentication middleware to add is for requiring a session user to be
 authenticated before accessing a route.
@@ -1196,7 +1215,7 @@ const requireAuth = [
     err.errors = ['Unauthorized'];
     err.status = 401;
     return next(err);
-  },
+  }
 ];
 ```
 
@@ -1216,7 +1235,7 @@ module.exports = { setTokenCookie, restoreUser, requireAuth };
 
 Let's do some testing! It's always good to test your code anytime you have an
 opportunity to do it. Testing at the very end is not a good idea because it will
-be hard to pinpoint where the error is in your code.
+be hard to pinpoint the location of the error in your code.
 
 Add a test route in your `backend/routes/api/index.js` file that will test the
 `setTokenCookie` function by getting the demo user and calling `setTokenCookie`.
@@ -1229,23 +1248,26 @@ Add a test route in your `backend/routes/api/index.js` file that will test the
 const asyncHandler = require('express-async-handler');
 const { setTokenCookie } = require('../../utils/auth.js');
 const { User } = require('../../db/models');
-router.get('/set-token-cookie', asyncHandler(async (req, res) => {
-  const user = await User.findOne({
+router.get(
+  '/set-token-cookie',
+  asyncHandler(async (req, res) => {
+    const user = await User.findOne({
       where: {
         username: 'Demo-lition'
-      },
-    })
-  setTokenCookie(res, user);
-  return res.json({ user });
-}));
+      }
+    });
+    setTokenCookie(res, user);
+    return res.json({ user });
+  })
+);
 
 // ...
 ```
 
 Go to [http://localhost:5000/api/set-token-cookie] and see if there is a `token`
 cookie set in your browser's dev tools. If there isn't, then check your backend
-server logs in your terminal where you ran `npm start` and the syntax of your
-`setTokenCookie` function and the test route.
+server logs in your terminal where you ran `npm start`. Also, check the syntax of your
+`setTokenCookie` function as well as the test route.
 
 Next, add a test route in your `backend/routes/api/index.js` file that will test
 the `restoreUser` middleware by connecting the middleware and checking whether
@@ -1257,13 +1279,9 @@ or not the `req.user` key has been populated by the middleware properly.
 
 // GET /api/restore-user
 const { restoreUser } = require('../../utils/auth.js');
-router.get(
-  '/restore-user',
-  restoreUser,
-  (req, res) => {
-    return res.json(req.user);
-  }
-);
+router.get('/restore-user', restoreUser, (req, res) => {
+  return res.json(req.user);
+});
 
 // ...
 ```
@@ -1274,15 +1292,13 @@ manually in your browser's dev tools and refresh. The JSON response should be
 empty.
 
 If this isn't the behavior, then check your backend server logs in your terminal
-where you ran `npm start` and the syntax of your `restoreUser` middleware and
-the test route.
+where you ran `npm start` as well as the syntax of your `restoreUser` middleware and test route.
 
 To set the `token` cookie back, just go to the `GET /api/set-token-cookie` route
 again, [http://localhost:5000/api/set-token-cookie].
 
 Lastly, test your `requireAuth` middleware by adding a test route in your
-`backend/routes/api/index.js` file that will return an error if there is no
-session user, otherwise return the session user's information.
+`backend/routes/api/index.js` file. If there is no session user, the route will return an error. Otherwise it will return the session user's information.
 
 ```js
 // backend/routes/api/index.js
@@ -1290,13 +1306,9 @@ session user, otherwise return the session user's information.
 
 // GET /api/require-auth
 const { requireAuth } = require('../../utils/auth.js');
-router.get(
-  '/require-auth',
-  requireAuth,
-  (req, res) => {
-    return res.json(req.user);
-  }
-);
+router.get('/require-auth', requireAuth, (req, res) => {
+  return res.json(req.user);
+});
 
 // ...
 ```
@@ -1305,19 +1317,17 @@ Set the `token` cookie back by accessing the `GET /api/set-token-cookie` route
 again, [http://localhost:5000/api/set-token-cookie].
 
 Go to [http://localhost:5000/api/require-auth] and see if the response has the
-demo user information returned as JSON. Then, remove the `token` cookie
+demo user's information returned as JSON. Then, remove the `token` cookie
 manually in your browser's dev tools and refresh. The JSON response should now
 be an `"Unauthorized"` error.
 
 If this isn't the behavior, then check your backend server logs in your terminal
-where you ran `npm start` and the syntax of your `requireAuth` middleware and
-the test route.
+where you ran `npm start` as well as the syntax of your `requireAuth` middleware and test route.
 
 To set the `token` cookie back, just go to the `GET /api/set-token-cookie` route
 again, [http://localhost:5000/api/set-token-cookie].
 
-**Once you are satisfied with the test results, you can remove all the code for
-the testing routes for the user auth middlewares.**
+**Once you are satisfied with the test results, you can remove all code for the testing the user auth middlewares routes.**
 
 ## Phase 4: User Auth Routes
 
@@ -1336,7 +1346,7 @@ This file will hold the resources for the route paths beginning with
 
 ```js
 // backend/routes/api/session.js
-const express = require('express')
+const express = require('express');
 const router = express.Router();
 
 module.exports = router;
@@ -1348,7 +1358,7 @@ Create and export an Express router from this file.
 
 ```js
 // backend/routes/api/users.js
-const express = require('express')
+const express = require('express');
 const router = express.Router();
 
 module.exports = router;
@@ -1374,7 +1384,7 @@ module.exports = router;
 
 ### User Login API Route
 
-In the `backend/routes/api/session.js` file, import the following at the top of
+In the `backend/routes/api/session.js` file, import the following code at the top of
 the file and create an Express router:
 
 ```js
@@ -1391,12 +1401,11 @@ const router = express.Router();
 The `asyncHandler` function from `express-async-handler` will wrap asynchronous
 route handlers and custom middlewares.
 
-Next, add the `POST /api/session` route to the router adding an asynchronous
-route handler. In the route handler, call the `login` static method on the
-`User` model. If there is a user returned from the method, then call
+Next, add the `POST /api/session` route to the router using an asynchronous
+route handler. In the route handler, call the `login` static method from the
+`User` model. If there is a user returned from the `login` static method, then call
 `setTokenCookie` and return a JSON response with the user information. If there
-is no user returned from the `login` static method, then create a `"Login
-failed"` error and invoke the next error-handling middleware with it.
+is no user returned from the `login` static method, then create a `"Login failed"` error and invoke the next error-handling middleware with it.
 
 ```js
 // backend/routes/api/session.js
@@ -1421,9 +1430,9 @@ router.post(
     await setTokenCookie(res, user);
 
     return res.json({
-      user,
+      user
     });
-  }),
+  })
 );
 ```
 
@@ -1444,8 +1453,8 @@ Remember, you need to pass in the value of the `XSRF-TOKEN` cookie as a header
 in the fetch request because the login route has a `POST` HTTP verb.
 
 If at any point you don't see the expected behavior while testing, then check
-your backend server logs in your terminal where you ran `npm start` and the
-syntax in the `session.js` and the `login` method in the `user.js` model file.
+your backend server logs in your terminal where you ran `npm start`. Also, check the
+syntax in the `session.js` as well as the `login` method in the `user.js` model file.
 
 Try to login the demo user with the username first.
 
@@ -1453,11 +1462,13 @@ Try to login the demo user with the username first.
 fetch('/api/session', {
   method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({ credential: 'Demo-lition', password: 'password' })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 Remember to replace the `<value of XSRF-TOKEN cookie>` with the value of the
@@ -1471,11 +1482,13 @@ Then try to login the demo user with the email next.
 fetch('/api/session', {
   method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({ credential: 'demo@user.io', password: 'password' })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 Now test an invalid user `credential` and `password` combination.
@@ -1484,11 +1497,13 @@ Now test an invalid user `credential` and `password` combination.
 fetch('/api/session', {
   method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({ credential: 'Demo-lition', password: 'Hello World!' })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 You should get a `Login failed` error back with an invalid `password` for the
@@ -1506,18 +1521,15 @@ response and return a JSON success message.
 // ...
 
 // Log out
-router.delete(
-  '/',
-  (_req, res) => {
-    res.clearCookie('token');
-    return res.json({ message: 'success' });
-  }
-);
+router.delete('/', (_req, res) => {
+  res.clearCookie('token');
+  return res.json({ message: 'success' });
+});
 
 // ...
 ```
 
-Notice how `asyncHandler` wasn't used to wrap the route handler because the
+Notice how `asyncHandler` wasn't used to wrap the route handler. This is because the
 route handler is not `async`.
 
 #### Test the Logout Route
@@ -1535,10 +1547,12 @@ Try to logout the session user.
 fetch('/api/session', {
   method: 'DELETE',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   }
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 You should see the `token` cookie disappear from the list of cookies in your
@@ -1546,14 +1560,14 @@ browser's dev tools. If you don't have the `XSRF-TOKEN` cookie anymore, access
 the [http://localhost:5000/hello/world] route to add the cookie back.
 
 If you don't see this expected behavior while testing, then check your backend
-server logs in your terminal where you ran `npm start` and the syntax in the
+server logs in your terminal where you ran `npm start` as well as the syntax in the
 `session.js` route file.
 
 Commit your code for the logout route once you are done testing!
 
 ### User Signup API Route
 
-In the `backend/routes/api/users.js` file, import the following at the top of
+In the `backend/routes/api/users.js` file, import the following code at the top of
 the file and create an Express router:
 
 ```js
@@ -1566,8 +1580,8 @@ const { User } = require('../../db/models');
 const router = express.Router();
 ```
 
-Next, add the `POST /api/users` route to the router adding an asynchronous route handler. In the route handler, call the `signup` static method on the `User`
-model.If the user is successfully created, then call `setTokenCookie` and return
+Next, add the `POST /api/users` route to the router using the asyncHandler function and an asynchronous route handler. In the route handler, call the `signup` static method on the `User`
+model. If the user is successfully created, then call `setTokenCookie` and return
 a JSON response with the user information. If the creation of the user is
 unsuccessful, then a Sequelize Validation error will be passed onto the next
 error-handling middleware.
@@ -1578,7 +1592,7 @@ error-handling middleware.
 
 // Sign up
 router.post(
-  '',
+  '/',
   asyncHandler(async (req, res) => {
     const { email, password, username } = req.body;
     const user = await User.signup({ email, username, password });
@@ -1586,9 +1600,9 @@ router.post(
     await setTokenCookie(res, user);
 
     return res.json({
-      user,
+      user
     });
-  }),
+  })
 );
 ```
 
@@ -1608,9 +1622,9 @@ test route and making a fetch request from the browser's dev tools console.
 Remember, you need to pass in the value of the `XSRF-TOKEN` cookie as a header
 in the fetch request because the login route has a `POST` HTTP verb.
 
-If at any point you don't see the expected behavior while testing, then check
-your backend server logs in your terminal where you ran `npm start` and the
-syntax in the `users.js` route file and the `signup` method in the `user.js`
+If at any point you don't see the expected behavior while testing, check
+your backend server logs in your terminal where you ran `npm start`. Also, check the
+syntax in the `users.js` route file as well as the `signup` method in the `user.js`
 model file.
 
 Try to signup a new valid user.
@@ -1619,15 +1633,17 @@ Try to signup a new valid user.
 fetch('/api/users', {
   method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({
     email: 'spidey@spider.man',
     username: 'Spidey',
     password: 'password'
   })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 Remember to replace the `<value of XSRF-TOKEN cookie>` with the value of the
@@ -1660,18 +1676,14 @@ Add the route to the `router` in the `backend/routes/api/session.js` file.
 // ...
 
 // Restore session user
-router.get(
-  '/',
-  restoreUser,
-  (req, res) => {
-    const { user } = req;
-    if (user) {
-      return res.json({
-        user: user.toSafeObject()
-      });
-    } else return res.json({});
-  }
-);
+router.get('/', restoreUser, (req, res) => {
+  const { user } = req;
+  if (user) {
+    return res.json({
+      user: user.toSafeObject()
+    });
+  } else return res.json({});
+});
 
 // ...
 ```
@@ -1722,9 +1734,7 @@ const handleValidationErrors = (req, _res, next) => {
   const validationErrors = validationResult(req);
 
   if (!validationErrors.isEmpty()) {
-    const errors = validationErrors
-      .array()
-      .map((error) => `${error.msg}`);
+    const errors = validationErrors.array().map((error) => `${error.msg}`);
 
     const err = Error('Bad request.');
     err.errors = errors;
@@ -1736,7 +1746,7 @@ const handleValidationErrors = (req, _res, next) => {
 };
 
 module.exports = {
-  handleValidationErrors,
+  handleValidationErrors
 };
 ```
 
@@ -1779,7 +1789,7 @@ const validateLogin = [
   check('password')
     .exists({ checkFalsy: true })
     .withMessage('Please provide a password.'),
-  handleValidationErrors,
+  handleValidationErrors
 ];
 ```
 
@@ -1815,9 +1825,9 @@ router.post(
     await setTokenCookie(res, user);
 
     return res.json({
-      user,
+      user
     });
-  }),
+  })
 );
 ```
 
@@ -1828,9 +1838,9 @@ test route and making a fetch request from the browser's dev tools console.
 Remember, you need to pass in the value of the `XSRF-TOKEN` cookie as a header
 in the fetch request because the login route has a `POST` HTTP verb.
 
-If at any point you don't see the expected behavior while testing, then check
-your backend server logs in your terminal where you ran `npm start` and the
-syntax in the `users.js` route file and the `handleValidationErrors` middleware.
+If at any point you don't see the expected behavior while testing, check
+your backend server logs in your terminal where you ran `npm start`. Also, check the
+syntax in the `users.js` route file as well as the `handleValidationErrors` middleware.
 
 Try setting the `credential` user field to an empty string. You should get a
 `Bad Request` error back.
@@ -1839,11 +1849,13 @@ Try setting the `credential` user field to an empty string. You should get a
 fetch('/api/session', {
   method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({ credential: '', password: 'password' })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 Remember to replace the `<value of XSRF-TOKEN cookie>` with the value of the
@@ -1858,11 +1870,13 @@ Test the `password` field by setting it to an empty string. You should get a
 fetch('/api/session', {
   method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({ credential: 'Demo-lition', password: '' })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 Once you finish testing, commit your code!
@@ -1898,23 +1912,20 @@ const validateSignup = [
     .exists({ checkFalsy: true })
     .isLength({ min: 4 })
     .withMessage('Please provide a username with at least 4 characters.'),
-  check('username')
-    .not()
-    .isEmail()
-    .withMessage('Username cannot be an email.'),
+  check('username').not().isEmail().withMessage('Username cannot be an email.'),
   check('password')
     .exists({ checkFalsy: true })
     .isLength({ min: 6 })
     .withMessage('Password must be 6 characters or more.'),
-  handleValidationErrors,
+  handleValidationErrors
 ];
 ```
 
 The `validateSignup` middleware is composed of the `check` and
 `handleValidationErrors` middleware. It checks to see if `req.body.email` exists
 and is an email, `req.body.username` is a minimum length of 4 and is not an
-email, and `req.body.password` is not empty. If at least one of them fails the
-check, then an error will be returned as the response.
+email, and `req.body.password` is not empty and has a minimum length of 6. If at least one of the `req.body` values fail the
+check, an error will be returned as the response.
 
 Next, connect the `POST /api/users` route to the `validateSignup` middleware.
 Your signup route should now look like this:
@@ -1925,7 +1936,7 @@ Your signup route should now look like this:
 
 // Sign up
 router.post(
-  '',
+  '/',
   validateSignup,
   asyncHandler(async (req, res) => {
     const { email, password, username } = req.body;
@@ -1934,9 +1945,9 @@ router.post(
     await setTokenCookie(res, user);
 
     return res.json({
-      user,
+      user
     });
-  }),
+  })
 );
 ```
 
@@ -1947,26 +1958,27 @@ test route and making a fetch request from the browser's dev tools console.
 Remember, you need to pass in the value of the `XSRF-TOKEN` cookie as a header
 in the fetch request because the login route has a `POST` HTTP verb.
 
-If at any point you don't see the expected behavior while testing, then check
-your backend server logs in your terminal where you ran `npm start` and the
-syntax in the `users.js` route file and the `handleValidationErrors` middleware.
+If at any point you don't see the expected behavior while testing, check
+your backend server logs in your terminal where you ran `npm start`. Also, check the
+syntax in the `users.js` route file as well as the `handleValidationErrors` middleware.
 
-First, test signup route with an empty `password` field. You should get a `Bad
-Request` error back with `Please provide a password` as one of the errors.
+First, test the signup route with an empty `password` field. You should get a `Bad Request` error back with `'Please provide a password'` as one of the errors.
 
 ```js
 fetch('/api/users', {
   method: 'POST',
   headers: {
-    "Content-Type": "application/json",
-    "XSRF-TOKEN": `<value of XSRF-TOKEN cookie>`
+    'Content-Type': 'application/json',
+    'XSRF-TOKEN': `<value of XSRF-TOKEN cookie>`
   },
   body: JSON.stringify({
     email: 'spidey@spider.man',
     username: 'Spidey',
     password: ''
   })
-}).then(res => res.json()).then(data => console.log(data));
+})
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
 Remember to replace the `<value of XSRF-TOKEN cookie>` with the value of the
@@ -1992,18 +2004,18 @@ Commit your code once you're done testing!
 
 ## Wrapping up the Backend
 
-You can now remove the `GET /hello/world` and `POST /api/test` test routes.
+You can now remove the `GET /hello/world` test routes. **Do not remove the
+`POST /api/test` route just yet. You will be using it in the next part.**
 
 Awesome work! You just finished setting up the entire backend for this project!
 In the next part, you will implement the React frontend.
 
 [helmet on the `npm` registry]: https://www.npmjs.com/package/helmet
-[Express error-handling middleware]: https://expressjs.com/en/guide/using-middleware.html#middleware.error-handling
+[express error-handling middleware]: https://expressjs.com/en/guide/using-middleware.html#middleware.error-handling
 [model-level validations]: https://sequelize.org/master/manual/validations-and-constraints.html
 [model scoping]: https://sequelize.org/master/manual/scopes.html
-[Content Security Policy]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-[Cross-Site Scripting]: https://developer.mozilla.org/en-US/docs/Glossary/Cross-site_scripting
-
+[content security policy]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+[cross-site scripting]: https://developer.mozilla.org/en-US/docs/Glossary/Cross-site_scripting
 [http://localhost:5000/hello/world]: http://localhost:5000/hello/world
 [http://localhost:5000/not-found]: http://localhost:5000/not-found
 [http://localhost:5000/api/set-token-cookie]: http://localhost:5000/api/set-token-cookie
