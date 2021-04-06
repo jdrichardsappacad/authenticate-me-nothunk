@@ -12,32 +12,15 @@ const removeUser = () => ({
   type: REMOVE_USER
 });
 
-// export const login = ({ credential, password }) => async (dispatch) => {
-//   const response = await csrfFetch('/api/session', {
-//     method: 'POST',
-//     body: JSON.stringify({ credential, password })
-//   });
-//   const data = await response.json();
-//   dispatch(setUser(data.user));
-//   return response;
-// };
-
-export const login = async ({ credential, password }, dispatch) => {
+export const login = async (dispatch, credential, password) => {
   const response = await csrfFetch('/api/session', {
     method: 'POST',
     body: JSON.stringify({ credential, password })
   });
   const data = await response.json();
   dispatch(setUser(data.user));
-  return response;
+  return data.user;
 };
-
-// export const restoreUser = () => async (dispatch) => {
-//   const response = await csrfFetch('/api/session');
-//   const data = await response.json();
-//   dispatch(setUser(data.user));
-//   return response;
-// };
 
 export const restoreUser = async (dispatch) => {
   const response = await csrfFetch('/api/session');
@@ -46,22 +29,7 @@ export const restoreUser = async (dispatch) => {
   return response;
 };
 
-// export const signup = (user) => async (dispatch) => {
-//   const { username, email, password } = user;
-//   const response = await csrfFetch('/api/users', {
-//     method: 'POST',
-//     body: JSON.stringify({
-//       username,
-//       email,
-//       password
-//     })
-//   });
-//   const data = await response.json();
-//   dispatch(setUser(data.user));
-//   return response;
-// };
-
-export const signup = async (user, dispatch) => {
+export const signup = async (dispatch, user) => {
   const { username, email, password } = user;
   const response = await csrfFetch('/api/users', {
     method: 'POST',
@@ -72,17 +40,10 @@ export const signup = async (user, dispatch) => {
     })
   });
   const data = await response.json();
-  dispatch(setUser(data.user));
-  return response;
-};
 
-// export const logout = () => async (dispatch) => {
-//   const response = await csrfFetch('/api/session', {
-//     method: 'DELETE'
-//   });
-//   dispatch(removeUser());
-//   return response;
-// };
+  dispatch(setUser(data.user));
+  return data.user;
+};
 
 export const logout = async (dispatch) => {
   const response = await csrfFetch('/api/session', {

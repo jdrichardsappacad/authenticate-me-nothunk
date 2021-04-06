@@ -20,9 +20,11 @@ function SignupFormPage() {
     if (password === confirmPassword) {
       setErrors([]);
       return sessionActions
-        .signup({ email, username, password }, dispatch)
+        .signup(dispatch, { email, username, password })
         .catch((res) => {
-          if (res.data && res.data.errors) setErrors(res.data.errors);
+          return setErrors(['Invalid Signup']);
+          // There is no res.data when it hits this catch. Errors are in the backend terminal returned in the middleware
+          // if (res.data && res.data.errors) setErrors(res.data.errors);
         });
     }
     return setErrors([
@@ -39,42 +41,39 @@ function SignupFormPage() {
             <li key={idx}>{error}</li>
           ))}
         </ul>
-        <label>
-          Email
-          <input
-            type='text'
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Username
-          <input
-            type='text'
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type='password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Confirm Password
-          <input
-            type='password'
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
-        </label>
+
+        <input
+          type='text'
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder='email'
+          required
+        />
+
+        <input
+          type='text'
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder='username: min 4'
+          required
+        />
+
+        <input
+          type='password'
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder='password'
+          required
+        />
+
+        <input
+          type='password'
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder='confirm password'
+          required
+        />
+
         <button type='submit'>Sign Up</button>
       </form>
     </>

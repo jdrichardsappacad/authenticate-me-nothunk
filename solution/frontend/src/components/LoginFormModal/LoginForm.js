@@ -13,8 +13,10 @@ function LoginForm() {
     e.preventDefault();
     setErrors([]);
 
-    sessionActions.login({ credential, password }, dispatch).catch((res) => {
-      if (res.data && res.data.errors) setErrors(res.data.errors);
+    sessionActions.login(dispatch, credential, password).catch((res) => {
+      // There is no res.data when it hits this catch. Errors are in the backend terminal returned in the middleware
+      // if (res.data && res.data.errors) setErrors(res.data.errors);
+      if (res.ok === false) setErrors(['Unauthorized']);
     });
   };
 
@@ -27,24 +29,23 @@ function LoginForm() {
             <li key={idx}>{error}</li>
           ))}
         </ul>
-        <label>
-          Username or Email
-          <input
-            type='text'
-            value={credential}
-            onChange={(e) => setCredential(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type='password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
+
+        <input
+          type='text'
+          value={credential}
+          onChange={(e) => setCredential(e.target.value)}
+          placeholder='username or email'
+          required
+        />
+
+        <input
+          type='password'
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder='password'
+          required
+        />
+
         <button type='submit'>Log In</button>
       </form>
     </>

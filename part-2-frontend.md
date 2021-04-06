@@ -27,7 +27,6 @@ In the `frontend` folder, `npm install` the following packages as dependencies:
 - `react-redux` - React components and hooks for Redux
 - `react-router-dom` - routing for React
 - `redux` - Redux
-- `redux-thunk` - add Redux thunk
 
 `npm install -D` the following packages as dev-dependencies:
 
@@ -38,12 +37,10 @@ In the `frontend` folder, `npm install` the following packages as dependencies:
 First, setup your Redux store. Make a folder in `frontend/src` called `store`
 and add an `index.js` file. In this file, import `createStore`,
 `combineReducers`, `applyMiddleware`, and `compose` from the `redux` package.
-Import `thunk` from `redux-thunk`.
 
 ```js
 // frontend/src/store/index.js
 import { createStore, combineReducers, applyMiddleware, compose } from 'redux';
-import thunk from 'redux-thunk';
 ```
 
 Create a `rootReducer` that calls `combineReducers` and pass in an empty object
@@ -52,23 +49,17 @@ for now.
 ```js
 // frontend/src/store/index.js
 // ...
-const rootReducer = combineReducers({
-});
+const rootReducer = combineReducers({});
 ```
 
-Initialize an `enhancer` variable that will be set to different store enhancers
-depending on if the Node environment is in development or production.
+Initialize an `enhancer` variable that will be set to different store enhancers that will be used if the Node environment is not in production.
 
-In production, the `enhancer` should only apply the `thunk` middleware.
-
-In development, the `logger` middleware and Redux dev tools compose enhancer as
-well. To use these tools, create a `logger` variable that uses the default
-export of `redux-logger`.  Then, grab the Redux dev tools compose enhancer with
+Create a `logger` variable that uses the default
+export of `redux-logger`. Then, grab the Redux dev tools compose enhancer with
 `window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__` and store it in a variable called
-`composeEnhancers`. You can use an __or__ `||` to keep the Redux's original
+`composeEnhancers`. You can use an **or** `||` to keep the Redux's original
 `compose` as a fallback. Then set the `enhancer` variable to the return of the
-`composeEnhancers` function passing in `applyMiddleware` invoked with `thunk`
-then `logger`.
+`composeEnhancers` function passing in `applyMiddleware` invoked with `logger`.
 
 ```js
 // frontend/src/store/index.js
@@ -76,13 +67,11 @@ then `logger`.
 
 let enhancer;
 
-if (process.env.NODE_ENV === 'production') {
-  enhancer = applyMiddleware(thunk);
-} else {
+if (process.env.NODE_ENV !== 'production') {
   const logger = require('redux-logger').default;
   const composeEnhancers =
     window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
-  enhancer = composeEnhancers(applyMiddleware(thunk, logger));
+  enhancer = composeEnhancers(applyMiddleware(logger));
 }
 ```
 
@@ -172,7 +161,7 @@ ReactDOM.render(
   <React.StrictMode>
     <Root />
   </React.StrictMode>,
-  document.getElementById('root'),
+  document.getElementById('root')
 );
 ```
 
@@ -244,7 +233,7 @@ the `fetch` function on the `window` that will be used in place of the default
 
 Add a `csrf.js` file in the `frontend/src/store` folder. Import `Cookies` from
 `js-cookie` that will be used to extract the `XSRF-TOKEN` cookie value. Define
-an `async` function called `fetch` that will take in `url` parameter and an
+an `async` function called `csrfFetch` that will take in `url` parameter and an
 `options` parameter that defaults to an empty object. If `options.headers` is
 not set, default it to an empty object. If `options.method` is not set, set it
 to the `GET` method. If it is any method other than a `GET` method, set the
@@ -252,8 +241,7 @@ to the `GET` method. If it is any method other than a `GET` method, set the
 `XSRF-TOKEN` cookie. Call and `await` the `window.fetch` with the `url` and the
 `options` object to get the response.
 
-If the response has a JSON body, then parse it using the `.json` method on the
-response. Set the parsed JSON body as a key of `data` on the response. If the
+If the
 response status code is 400 or above, `throw` the response as the error.
 Otherwise, return the response.
 
@@ -261,15 +249,15 @@ Otherwise, return the response.
 // frontend/src/store/csrf.js
 import Cookies from 'js-cookie';
 
-export async function fetch(url, options = {}) {
+export async function csrfFetch(url, options = {}) {
   // set options.method to 'GET' if there is no method
   options.method = options.method || 'GET';
   // set options.headers to an empty object if there is no headers
   options.headers = options.headers || {};
 
   // if the options.method is not 'GET', then set the "Content-Type" header to
-    // "application/json", and set the "XSRF-TOKEN" header to the value of the 
-    // "XSRF-TOKEN" cookie
+  // "application/json", and set the "XSRF-TOKEN" header to the value of the
+  // "XSRF-TOKEN" cookie
   if (options.method.toUpperCase() !== 'GET') {
     options.headers['Content-Type'] =
       options.headers['Content-Type'] || 'application/json';
@@ -278,25 +266,17 @@ export async function fetch(url, options = {}) {
   // call the default window's fetch with the url and the options passed in
   const res = await window.fetch(url, options);
 
-  // if the response's body is JSON, then parse the JSON body and set it to a
-    // key of `data` on the response
-  const contentType = res.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    const data = await res.json();
-    res.data = data;
-  }
-
   // if the response status code is 400 or above, then throw an error with the
-    // error being the response
+  // error being the response
   if (res.status >= 400) throw res;
 
   // if the response status code is under 400, then return the response to the
-    // next promise chain
+  // next promise chain
   return res;
 }
 ```
 
-Export the custom `fetch` function from this file.
+Export the custom `csrfFetch` function from this file.
 
 ### Restore the XSRF-TOKEN Cookie
 
@@ -327,7 +307,7 @@ if (process.env.NODE_ENV === 'production') {
   });
 
   // Serve the static assets in the frontend's build folder
-  router.use(express.static(path.resolve("../frontend/build")));
+  router.use(express.static(path.resolve('../frontend/build')));
 
   // Serve the frontend's index.html file at all other routes NOT starting with /api
   router.get(/^(?!\/?api).*/, (req, res) => {
@@ -366,7 +346,7 @@ Back in the React frontend, this `GET /api/csrf/restore` route needs to be
 called when the application is loaded.
 
 Define and export a function called `restoreCSRF` in the
-`frontend/src/store/csrf.js` that will call the custom `fetch` function with
+`frontend/src/store/csrf.js` that will call the custom `csrfFetch` function with
 `/api/csrf/restore` as the `url` parameter.
 
 ```js
@@ -375,50 +355,57 @@ Define and export a function called `restoreCSRF` in the
 
 // call this to get the "XSRF-TOKEN" cookie, should only be used in development
 export function restoreCSRF() {
-  return fetch('/api/csrf/restore');
+  return csrfFetch('/api/csrf/restore');
 }
 ```
 
 In the frontend entry file (`frontend/src/index.js`), call the `restoreCSRF`
 function when in development before defining the `Root` functional component.
-Also, attach the custom `fetch` function onto the `window` when in development
+Also, attach the custom `csrfFetch` function onto the `window` when in development
 as `window.csrfFetch`.
 
 ```js
 // frontend/src/index.js
 // ... other imports
-import { restoreCSRF, fetch } from './store/csrf';
+import { restoreCSRF, csrfFetch } from './store/csrf';
 
 // ... const store = configureStore();
 
 if (process.env.NODE_ENV !== 'production') {
   restoreCSRF();
 
-  window.csrfFetch = fetch;
+  window.csrfFetch = csrfFetch;
   window.store = store;
 }
 ```
 
-#### Test Custom `fetch` with CSRF
+#### Test Custom `csrfFetch` with CSRF
 
-To test the custom `fetch` function that attaches the CSRF token to the header,
+To test the custom `csrfFetch` function that attaches the CSRF token to the header,
 navigate to root route of the React application, [http://localhost:3000]. In the
-browser's dev tools console, make a request to `POST /api/login` with the demo
+browser's dev tools console, make a request to `POST /api/session` with the demo
 user credentials using the `window.csrfFetch` function. There is no need to
 specify the headers because the default header for `"Content-Type"`, set to
 `"application/json"`, and the `"XSRF-TOKEN"` header are added by the custom
-`fetch`.
+`csrfFetch`.
 
 ```js
-window.csrfFetch('/api/test', {
-  method: 'POST',
-  body: JSON.stringify({ credential: 'Demo-lition', password: 'password' })
-}).then(res => console.log(res.data));
+window
+  .csrfFetch('/api/test', {
+    method: 'POST',
+    body: JSON.stringify({ credential: 'Demo-lition', password: 'password' })
+  })
+  .then((res) => res.json())
+  .then((data) => console.log(data));
 ```
 
-If you see an object with a key of `user` logged in the terminal, then you
+If you see an object with a key of `requestBody` logged in the terminal with the
+value as the object that you passed into the body of the request, then you
 successfully set up CSRF protection on the frontend. If you don't then check
 your syntax in the `frontend/src/store/csrf.js` and the `frontend/src/index.js`.
+
+You can now remove the `POST /api/test` test route in your backend code, as you
+won't be needing it anymore.
 
 At this point, all the frontend setup is been complete. **Commit your code!**
 
@@ -446,11 +433,7 @@ current session user:
 ```js
 {
   user: {
-    id,
-    email,
-    username,
-    createdAt,
-    updatedAt
+    id, email, username, createdAt, updatedAt;
   }
 }
 ```
@@ -460,7 +443,7 @@ this:
 
 ```js
 {
-  user: null
+  user: null;
 }
 ```
 
@@ -472,14 +455,14 @@ that will remove the session user. Their types should be extracted as a
 constant and used by the action creator and the `session` reducer.
 
 You need to call the API to login then set the session user from the response,
-so add a thunk action for the `POST /api/session`. Make sure to use the custom
-`fetch` function from `frontend/src/store/csrf.js`. The `POST /api/session`
+so add a function for the `POST /api/session`. Make sure to use the custom
+`csrfFetch` function from `frontend/src/store/csrf.js` to fetch the route. The `POST /api/session`
 route expects the request body to have a key of `credential` with an existing
 username or email and a key of `password`. After the response from the AJAX call
-comes back, dispatch the action for setting the session user to the response's
-data.
+comes back, parse the JSON body of the response, and dispatch the action for
+setting the session user to the user in the response's body.
 
-Export the login thunk action, and export the reducer as the default export.
+Export the login function, and export the reducer as the default export.
 
 Import the reducer in `session.js` into the file with the root reducer,
 `frontend/src/store/index.js`.
@@ -489,7 +472,7 @@ to the session reducer.
 
 #### Test the Session Actions and Reducer
 
-Login should be working so give it a try! Test the login thunk action and the
+Login should be working so give it a try! Test the login function and the
 `session` reducer.
 
 Import all the actions from the `session.js` file into the frontend application
@@ -506,7 +489,7 @@ const store = configureStore();
 if (process.env.NODE_ENV !== 'production') {
   restoreCSRF();
 
-  window.csrfFetch = fetch;
+  window.csrfFetch = csrfFetch;
   window.store = store;
   window.sessionActions = sessionActions;
 }
@@ -514,14 +497,14 @@ if (process.env.NODE_ENV !== 'production') {
 ```
 
 Navigate to [http://localhost:3000] and in the browser's dev tools console, try
-dispatching the login thunk action with the demo user login credentials.
+calling the login function with the demo user login credentials.
 
 The `previous state` in the console should look like this:
 
 ```js
 {
   session: {
-    user: null
+    user: null;
   }
 }
 ```
@@ -557,7 +540,7 @@ Here's an example for the `session` actions and reducer:
 
 ```js
 // frontend/src/store/session.js
-import { fetch } from './csrf';
+import { csrfFetch } from './csrf';
 
 const SET_USER = 'session/setUser';
 const REMOVE_USER = 'session/removeUser';
@@ -565,27 +548,24 @@ const REMOVE_USER = 'session/removeUser';
 const setUser = (user) => {
   return {
     type: SET_USER,
-    payload: user,
+    payload: user
   };
 };
 
 const removeUser = () => {
   return {
-    type: REMOVE_USER,
+    type: REMOVE_USER
   };
 };
 
-export const login = (user) => async (dispatch) => {
-  const { credential, password } = user;
-  const response = await fetch('/api/session', {
+export const login = async (dispatch, credential, password) => {
+  const response = await csrfFetch('/api/session', {
     method: 'POST',
-    body: JSON.stringify({
-      credential,
-      password,
-    }),
+    body: JSON.stringify({ credential, password })
   });
-  dispatch(setUser(response.data.user));
-  return response;
+  const data = await response.json();
+  dispatch(setUser(data.user));
+  return data.user;
 };
 
 const initialState = { user: null };
@@ -617,19 +597,16 @@ Here's an example for the `rootReducer` setup:
 import sessionReducer from './session';
 
 const rootReducer = combineReducers({
-  session: sessionReducer,
+  session: sessionReducer
 });
 // ...
 ```
 
-Here's an example for the login thunk action test in the browser's dev tools
+Here's an example for the login function test in the browser's dev tools
 console:
 
 ```js
-window.store.dispatch(window.sessionActions.login({
-  credential: 'Demo-lition',
-  password: 'password'
-}));
+window.sessionActions.login(window.store.dispatch, 'Demo-lition', 'password');
 ```
 
 ### `LoginFormPage` Component
@@ -648,8 +625,8 @@ will hold all the files for the login form. Add an `index.js` file in the
 Render a form with a controlled input for the user login credential (username or
 email) and a controlled input for the user password.
 
-On submit of the form, dispatch the login thunk action with the form input
-values. Make sure to handle and display errors from the login thunk action
+On submit of the form, invoke the login function with the dispatch and the form input
+values. Make sure to handle and display errors from the login function
 if there are any.
 
 Export the `LoginFormPage` component at the bottom of the file, then render it
@@ -685,49 +662,55 @@ import { Redirect } from 'react-router-dom';
 
 function LoginFormPage() {
   const dispatch = useDispatch();
-  const sessionUser = useSelector(state => state.session.user);
+  const sessionUser = useSelector((state) => state.session.user);
+  import { Redirect } from 'react-router-dom';
+
   const [credential, setCredential] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState([]);
 
-  if (sessionUser) return (
-    <Redirect to="/" />
-  );
+  if (sessionUser) return <Redirect to='/' />;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setErrors([]);
-    return dispatch(sessionActions.login({ credential, password }))
-      .catch((res) => {
-        if (res.data && res.data.errors) setErrors(res.data.errors);
-      });
-  }
+
+    sessionActions.login(dispatch, credential, password).catch((res) => {
+      // There is no res.data when it hits this catch. Errors are in the backend terminal returned in the middleware
+      // if (res.data && res.data.errors) setErrors(res.data.errors);
+      if (res.ok === false) setErrors(['Unauthorized']);
+    });
+  };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <ul>
-        {errors.map((error, idx) => <li key={idx}>{error}</li>)}
-      </ul>
-      <label>
-        Username or Email
+    <>
+      <h1>Log In</h1>
+      <form onSubmit={handleSubmit}>
+        <ul>
+          {errors.map((error, idx) => (
+            <li key={idx}>{error}</li>
+          ))}
+        </ul>
+
         <input
-          type="text"
+          type='text'
           value={credential}
           onChange={(e) => setCredential(e.target.value)}
+          placeholder='username or email'
           required
         />
-      </label>
-      <label>
-        Password
+
         <input
-          type="password"
+          type='password'
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder='password'
           required
         />
-      </label>
-      <button type="submit">Log In</button>
-    </form>
+
+        <button type='submit'>Log In</button>
+      </form>
+    </>
   );
 }
 
@@ -745,7 +728,7 @@ import LoginFormPage from './components/LoginFormPage';
 function App() {
   return (
     <Switch>
-      <Route path="/login">
+      <Route path='/login'>
         <LoginFormPage />
       </Route>
     </Switch>
@@ -781,21 +764,21 @@ across a refresh? By loading the application after accessing the route to
 get the current session user `GET /api/session` and adding the user info to the
 Redux store again.
 
-Add a thunk action in `frontend/src/store/session.js` that will call the
-`GET /api/session` and dispatch the action to set the session user with the data
-from the response.
+Add a restore user function in `frontend/src/store/session.js` that will call the
+`GET /api/session`, parse the JSON body of the response, and dispatch the action
+for setting the session user to the user in the response's body.
 
-Test your thunk action by logging in then refreshing at the
+Test your function by logging in then refreshing at the
 [http://localhost:3000] route. Make sure you have a `token` in your cookies. In
-the browser's dev tools console, try dispatching the restore session user
-thunk action.
+the browser's dev tools console, try calling the restore session user
+function.
 
 The `previous state` in the console should look like this:
 
 ```js
 {
   session: {
-    user: null
+    user: null;
   }
 }
 ```
@@ -817,33 +800,34 @@ The `next state` in the console should look something like this:
 ```
 
 If you don't see this behavior, then check your syntax for the restore user
-thunk action.
+function.
 
-After you test it to see if it works, then use this thunk action inside of
+After you test it to see if it works, then use this function inside of
 `App.js` after the `App` component's first render.
 
 **Commit after testing!**
 
-### Example Restore Session User Thunk Action
+### Example Restore Session User Function
 
 Again, there is no absolute "right" way of doing this. As long as your React
 application is behaving as expected, then you don't need to make your code look
 exactly like the example code.
 
-Here's an example of the restore session user thunk action:
+Here's an example of the restore session user function:
 
 ```js
 // frontend/src/store/session.js
 // ...
-export const restoreUser = () => async dispatch => {
-  const res = await fetch('/api/session');
-  dispatch(setUser(res.data.user));
-  return res;
+export const restoreUser = async (dispatch) => {
+  const response = await csrfFetch('/api/session');
+  const data = await response.json();
+  dispatch(setUser(data.user));
+  return response;
 };
 // ...
 ```
 
-Here's an example of how to test the `restoreUser` thunk action:
+Here's an example of how to test the `restoreUser` function:
 
 ```js
 window.store.dispatch(window.sessionActions.restoreUser());
@@ -853,25 +837,29 @@ Here's an example for how `App.js` could look like now:
 
 ```js
 // frontend/src/App.js
-import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { Route, Switch } from "react-router-dom";
-import LoginFormPage from "./components/LoginFormPage";
-import * as sessionActions from "./store/session";
+import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { Route, Switch } from 'react-router-dom';
+import LoginFormPage from './components/LoginFormPage';
+import * as sessionActions from './store/session';
 
 function App() {
   const dispatch = useDispatch();
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
-    dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
+    sessionActions
+      .restoreUser(window.store.dispatch)
+      .then(() => setIsLoaded(true));
   }, [dispatch]);
 
-  return isLoaded && (
-    <Switch>
-      <Route path="/login">
-        <LoginFormPage />
-      </Route>
-    </Switch>
+  return (
+    isLoaded && (
+      <Switch>
+        <Route path='/login'>
+          <LoginFormPage />
+        </Route>
+      </Switch>
+    )
   );
 }
 
@@ -889,27 +877,27 @@ own before looking below for help!**
 
 You will use the `POST /api/users` backend route to signup a user.
 
-In the session store file, add a signup thunk action that will hit the signup
-backend route with `username`, `email`, and `password` inputs. After the
-response from the AJAX call comes back, dispatch the action for setting the
-session user to the response's data.
+In the session store file, add a signup function that will hit the signup
+backend route with `dispatch` and user inputs. Destructure the user argument to create variables for the`username`, `email` and `password`. After the
+response from the AJAX call comes back, parse the JSON body of the response, and
+dispatch the action for setting the session user to the user in the response's
+body.
 
-Export the signup thunk action.
+Export the signup function.
 
 #### Test the Signup Action
 
-Test the signup thunk action.
+Test the signup function.
 
 Navigate to [http://localhost:3000]. If there is a `token` cookie, remove it and
-refresh. In the browser's dev tools console, try dispatching the signup thunk
-action with a new `username`, a new `email`, and a `password`.
+refresh. In the browser's dev tools console, try invoking the signup function with a new `username`, a new `email`, and a `password`.
 
 The `previous state` in the console should look like this:
 
 ```js
 {
   session: {
-    user: null
+    user: null;
   }
 }
 ```
@@ -941,36 +929,38 @@ Again, there is no absolute "right" way of doing this. As long as your signup
 action is displaying the expected initial state and states after each dispatched
 action, then your setup is fine.
 
-Here's an example for the signup thunk action:
+Here's an example for the signup function:
 
 ```js
 // frontend/src/store/session.js
 // ...
-export const signup = (user) => async (dispatch) => {
+export const signup = async (dispatch, user) => {
   const { username, email, password } = user;
-  const response = await fetch("/api/users", {
-    method: "POST",
+  const response = await csrfFetch('/api/users', {
+    method: 'POST',
     body: JSON.stringify({
       username,
       email,
-      password,
-    }),
+      password
+    })
   });
-  dispatch(setUser(response.data.user));
-  return response;
+  const data = await response.json();
+  dispatch(setUser(data.user));
+  return data.user;
 };
 // ...
 ```
 
-Here's an example for the signup thunk action test in the browser's dev tools
+Here's an example for the signup function test in the browser's dev tools
 console:
 
 ```js
-window.store.dispatch(window.sessionActions.signup({
-  username: 'NewUser',
-  email: 'new@user.io',
-  password: 'password'
-}));
+window.sessionActions.signup(
+  window.store.dispatch,
+  'NewUser',
+  'new@user.io',
+  'password'
+);
 ```
 
 ### `SignupFormPage` Component
@@ -985,8 +975,8 @@ Render a form with controlled inputs for the new user's username, email, and
 password, and confirm password fields.
 
 On submit of the form, validate that the confirm password is the same as the
-password fields, then dispatch the signup thunk action with the form input
-values. Make sure to handle and display errors from the signup thunk action
+password fields, then invoke the signup function. Pass dispatch as the first argument and an object with the form input
+values as the second argument. Make sure to handle and display errors from the signup action
 if there are any. If the confirm password is not the same as the password,
 display an error message for this.
 
@@ -1016,77 +1006,82 @@ Here's an example for `SignupFormPage` component:
 
 ```js
 // frontend/src/components/SignupFormPage/index.js
-import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Redirect } from "react-router-dom";
-import * as sessionActions from "../../store/session";
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Redirect } from 'react-router-dom';
+import * as sessionActions from '../../store/session';
 
 function SignupFormPage() {
   const dispatch = useDispatch();
   const sessionUser = useSelector((state) => state.session.user);
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState([]);
 
-  if (sessionUser) return <Redirect to="/" />;
+  if (sessionUser) return <Redirect to='/' />;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (password === confirmPassword) {
       setErrors([]);
-      return dispatch(sessionActions.signup({ email, username, password }))
-        .catch(res => {
-          if (res.data && res.data.errors) setErrors(res.data.errors);
+      return sessionActions
+        .signup(dispatch, { email, username, password })
+        .catch((res) => {
+          return setErrors(['Invalid Signup']);
         });
     }
-    return setErrors(['Confirm Password field must be the same as the Password field']);
+    return setErrors([
+      'Confirm Password field must be the same as the Password field'
+    ]);
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <ul>
-        {errors.map((error, idx) => <li key={idx}>{error}</li>)}
-      </ul>
-      <label>
-        Email
+    <>
+      <h1>Sign Up</h1>
+      <form onSubmit={handleSubmit}>
+        <ul>
+          {errors.map((error, idx) => (
+            <li key={idx}>{error}</li>
+          ))}
+        </ul>
+
         <input
-          type="text"
+          type='text'
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder='email'
           required
         />
-      </label>
-      <label>
-        Username
+
         <input
-          type="text"
+          type='text'
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          placeholder='username: min 4'
           required
         />
-      </label>
-      <label>
-        Password
+
         <input
-          type="password"
+          type='password'
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder='password'
           required
         />
-      </label>
-      <label>
-        Confirm Password
+
         <input
-          type="password"
+          type='password'
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder='confirm password'
           required
         />
-      </label>
-      <button type="submit">Sign Up</button>
-    </form>
+
+        <button type='submit'>Sign Up</button>
+      </form>
+    </>
   );
 }
 
@@ -1097,29 +1092,31 @@ Here's an example for how `App.js` should look like now:
 
 ```js
 // frontend/src/App.js
-import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { Route, Switch } from "react-router-dom";
-import LoginFormPage from "./components/LoginFormPage";
-import SignupFormPage from "./components/SignupFormPage";
-import * as sessionActions from "./store/session";
+import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { Route, Switch } from 'react-router-dom';
+import LoginFormPage from './components/LoginFormPage';
+import SignupFormPage from './components/SignupFormPage';
+import * as sessionActions from './store/session';
 
 function App() {
   const dispatch = useDispatch();
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
-    dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
+    sessionActions.restoreUser(dispatch).then(() => setIsLoaded(true));
   }, [dispatch]);
 
-  return isLoaded && (
-    <Switch>
-      <Route path="/login">
-        <LoginFormPage />
-      </Route>
-      <Route path="/signup">
-        <SignupFormPage />
-      </Route>
-    </Switch>
+  return (
+    isLoaded && (
+      <Switch>
+        <Route path='/login'>
+          <LoginFormPage />
+        </Route>
+        <Route path='/signup'>
+          <SignupFormPage />
+        </Route>
+      </Switch>
+    )
   );
 }
 
@@ -1152,19 +1149,19 @@ exists.
 
 You will use the `DELETE /api/session` backend route to logout a user.
 
-In the session store file, add a logout thunk action that will hit the logout
+In the session store file, add a logout function that will hit the logout
 backend route. After the response from the AJAX call comes back, dispatch the
-action for removing the session user to the response's data.
+action for removing the session user.
 
-Export the logout thunk action.
+Export the logout function.
 
 #### Test the Logout Action
 
-Test the logout thunk action.
+Test the logout function.
 
 Navigate to [http://localhost:3000]. If there is no `token` cookie, add one by
 logging in or signing up. In the browser's dev tools console, try dispatching
-the logout thunk action.
+the logout function.
 
 The `previous state` in the console should look like this:
 
@@ -1187,7 +1184,7 @@ The `next state` in the console should look something like this:
 ```js
 {
   session: {
-    user: null
+    user: null;
   }
 }
 ```
@@ -1203,26 +1200,27 @@ Again, there is no absolute "right" way of doing this. As long as your logout
 action is displaying the expected initial state and states after each dispatched
 action, then your setup is fine.
 
-Here's an example for the logout thunk action:
+Here's an example for the logout function:
 
 ```js
 // frontend/src/store/session.js
 // ...
-export const logout = () => async (dispatch) => {
-  const response = await fetch('/api/session', {
-    method: 'DELETE',
+export const logout = async (dispatch) => {
+  const response = await csrfFetch('/api/session', {
+    method: 'DELETE'
   });
   dispatch(removeUser());
   return response;
 };
+
 // ...
 ```
 
-Here's an example for the logout thunk action test in the browser's dev tools
+Here's an example for the logout function test in the browser's dev tools
 console:
 
 ```js
-window.store.dispatch(window.sessionActions.logout());
+window.sessionActions.logout(window.store.dispatch);
 ```
 
 ### `Navigation` Component
@@ -1244,7 +1242,7 @@ Make a `ProfileButton.js` file in the `Navigation` folder. Create a React
 functional component called `ProfileButton` that will render an icon from
 [Font Awesome].
 
-Follow the [instructions here for setting up Font Awesome][Font Awesome]. The
+Follow the [instructions here for setting up Font Awesome][font awesome]. The
 easiest way to connect Font Awesome to your React application is by sharing your
 email and creating a new kit. The kit should let you copy an HTML `<script>`.
 Add this script to the `<head>` of your `frontend/public/index.html` file.
@@ -1258,10 +1256,11 @@ to the `<head>` of your `frontend/public/index.html` file:
   rel="stylesheet"
   href="https://use.fontawesome.com/releases/v5.5.0/css/all.css"
   integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU"
-  crossorigin="anonymous" />
+  crossorigin="anonymous"
+/>
 ```
 
-Now you can use any of the [free icons available in Font Awesome][Choose a Font Awesome Icon] by adding the `<i>` element with the desired `className` to ber
+Now you can use any of the [free icons available in Font Awesome][choose a font awesome icon] by adding the `<i>` element with the desired `className` to ber
 rendered in a React component. To change the size or color of the icon, wrap
 the `<i>` element in a parent element like a `div`. Manipulating the `font-size`
 of the parent element changes the size of the icon. The color of the parent
@@ -1270,13 +1269,13 @@ element will be the color of the icon. For example, to render a big orange
 
 ```js
 const Carrot = () => (
-  <div style={{ color: "orange", fontSize: "100px" }}>
-    <i className="fas fa-carrot"></i>
+  <div style={{ color: 'orange', fontSize: '100px' }}>
+    <i className='fas fa-carrot'></i>
   </div>
 );
 ```
 
-[Choose an icon][Choose a Font Awesome Icon] that will represent the user
+[Choose an icon][choose a font awesome icon] that will represent the user
 profile button and render it in the `ProfileButton` component.
 
 Export the `ProfileButton` component at the bottom of the file, and import it
@@ -1368,19 +1367,17 @@ import { useSelector } from 'react-redux';
 import ProfileButton from './ProfileButton';
 import './Navigation.css';
 
-function Navigation({ isLoaded }){
-  const sessionUser = useSelector(state => state.session.user);
+function Navigation({ isLoaded }) {
+  const sessionUser = useSelector((state) => state.session.user);
 
   let sessionLinks;
   if (sessionUser) {
-    sessionLinks = (
-      <ProfileButton user={sessionUser} />
-    );
+    sessionLinks = <ProfileButton user={sessionUser} />;
   } else {
     sessionLinks = (
       <>
-        <NavLink to="/login">Log In</NavLink>
-        <NavLink to="/signup">Sign Up</NavLink>
+        <NavLink to='/login'>Log In</NavLink>
+        <NavLink to='/signup'>Sign Up</NavLink>
       </>
     );
   }
@@ -1388,7 +1385,9 @@ function Navigation({ isLoaded }){
   return (
     <ul>
       <li>
-        <NavLink exact to="/">Home</NavLink>
+        <NavLink exact to='/'>
+          Home
+        </NavLink>
         {isLoaded && sessionLinks}
       </li>
     </ul>
@@ -1402,19 +1401,19 @@ Here's an example for how `ProfileButton.js` should look like:
 
 ```js
 // frontend/src/components/Navigation/ProfileButton.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import * as sessionActions from '../../store/session';
 
 function ProfileButton({ user }) {
   const dispatch = useDispatch();
   const [showMenu, setShowMenu] = useState(false);
-  
+
   const openMenu = () => {
     if (showMenu) return;
     setShowMenu(true);
   };
-  
+
   useEffect(() => {
     if (!showMenu) return;
 
@@ -1423,8 +1422,8 @@ function ProfileButton({ user }) {
     };
 
     document.addEventListener('click', closeMenu);
-  
-    return () => document.removeEventListener("click", closeMenu);
+
+    return () => document.removeEventListener('click', closeMenu);
   }, [showMenu]);
 
   const logout = (e) => {
@@ -1435,10 +1434,10 @@ function ProfileButton({ user }) {
   return (
     <>
       <button onClick={openMenu}>
-        <i className="fas fa-user-circle" />
+        <i className='fas fa-user-circle' />
       </button>
       {showMenu && (
-        <ul className="profile-dropdown">
+        <ul className='profile-dropdown'>
           <li>{user.username}</li>
           <li>{user.email}</li>
           <li>
@@ -1457,13 +1456,13 @@ Here's an example for how `App.js` should look like now:
 
 ```js
 // frontend/src/App.js
-import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { Route, Switch } from "react-router-dom";
-import LoginFormPage from "./components/LoginFormPage";
-import SignupFormPage from "./components/SignupFormPage";
-import * as sessionActions from "./store/session";
-import Navigation from "./components/Navigation";
+import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { Route, Switch } from 'react-router-dom';
+import LoginFormPage from './components/LoginFormPage';
+import SignupFormPage from './components/SignupFormPage';
+import * as sessionActions from './store/session';
+import Navigation from './components/Navigation';
 
 function App() {
   const dispatch = useDispatch();
@@ -1477,10 +1476,10 @@ function App() {
       <Navigation isLoaded={isLoaded} />
       {isLoaded && (
         <Switch>
-          <Route path="/login">
+          <Route path='/login'>
             <LoginFormPage />
           </Route>
-          <Route path="/signup">
+          <Route path='/signup'>
             <SignupFormPage />
           </Route>
         </Switch>
@@ -1502,7 +1501,10 @@ with the value of your Font Awesome starter kit's id.
   <head>
     <meta charset="utf-8" />
     <title>Simple React App</title>
-    <script src="https://kit.fontawesome.com/{kit_id}.js" crossorigin="anonymous"></script>
+    <script
+      src="https://kit.fontawesome.com/{kit_id}.js"
+      crossorigin="anonymous"
+    ></script>
   </head>
   <body>
     <div id="root"></div>
@@ -1519,7 +1521,12 @@ stylesheet if you don't want to register for Font Awesome:
   <head>
     <meta charset="utf-8" />
     <title>Simple React App</title>
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous" />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.5.0/css/all.css"
+      integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU"
+      crossorigin="anonymous"
+    />
   </head>
   <body>
     <div id="root"></div>
@@ -1571,7 +1578,9 @@ element to this `modalRef`. `modalRef.current` will be set to the actual HTML
 DOM element that gets rendered from the `div`. Create a component state variable
 called `value` that will be set to `modalRef.current` after the initial render
 (hint: use the `useEffect` hook). Pass this `value` as the `value` prop to the
-`ModalContext.Provider` component. Export the `ModalProvider` component.
+`ModalContext.Provider` component. Export the `ModalProvider` component. Import
+the `ModalProvider` component in `frontend/src/index.js` and wrap all the
+contents of the Root component with it.
 
 Create a functional component called `Modal` that expects an `onClose` function
 and `children` as props. Get the value of the `ModalContext` into the `Modal`
@@ -1656,13 +1665,11 @@ export function ModalProvider({ children }) {
 
   useEffect(() => {
     setValue(modalRef.current);
-  }, [])
+  }, []);
 
   return (
     <>
-      <ModalContext.Provider value={value}>
-        {children}
-      </ModalContext.Provider>
+      <ModalContext.Provider value={value}>{children}</ModalContext.Provider>
       <div ref={modalRef} />
     </>
   );
@@ -1673,11 +1680,9 @@ export function Modal({ onClose, children }) {
   if (!modalNode) return null;
 
   return ReactDOM.createPortal(
-    <div id="modal">
-      <div id="modal-background" onClick={onClose} />
-      <div id="modal-content">
-        {children}
-      </div>
+    <div id='modal'>
+      <div id='modal-background' onClick={onClose} />
+      <div id='modal-content'>{children}</div>
     </div>,
     modalNode
   );
@@ -1710,7 +1715,7 @@ Here's an example for how `Modal.css` should look like:
 
 #modal-content {
   position: absolute;
-  background-color:white;
+  background-color: white;
 }
 ```
 
@@ -1744,53 +1749,55 @@ Here's an example for how `LoginForm.js` should look like:
 
 ```js
 // frontend/src/components/LoginFormModal/LoginForm.js
-import React, { useState } from "react";
-import * as sessionActions from "../../store/session";
-import { useDispatch } from "react-redux";
+import React, { useState } from 'react';
+import * as sessionActions from '../../store/session';
+import { useDispatch } from 'react-redux';
+import './LoginForm.css';
 
 function LoginForm() {
   const dispatch = useDispatch();
-  const [credential, setCredential] = useState("");
-  const [password, setPassword] = useState("");
+  const [credential, setCredential] = useState('');
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState([]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setErrors([]);
-    return dispatch(sessionActions.login({ credential, password })).catch(
-      (res) => {
-        if (res.data && res.data.errors) setErrors(res.data.errors);
-      }
-    );
+
+    sessionActions.login(dispatch, credential, password).catch((res) => {
+      if (res.ok === false) setErrors(['Unauthorized']);
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <ul>
-        {errors.map((error, idx) => (
-          <li key={idx}>{error}</li>
-        ))}
-      </ul>
-      <label>
-        Username or Email
+    <>
+      <h1>Log In</h1>
+      <form onSubmit={handleSubmit}>
+        <ul>
+          {errors.map((error, idx) => (
+            <li key={idx}>{error}</li>
+          ))}
+        </ul>
+
         <input
-          type="text"
+          type='text'
           value={credential}
           onChange={(e) => setCredential(e.target.value)}
+          placeholder='username or email'
           required
         />
-      </label>
-      <label>
-        Password
+
         <input
-          type="password"
+          type='password'
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder='password'
           required
         />
-      </label>
-      <button type="submit">Log In</button>
-    </form>
+
+        <button type='submit'>Log In</button>
+      </form>
+    </>
   );
 }
 
@@ -1808,19 +1815,17 @@ import ProfileButton from './ProfileButton';
 import LoginFormModal from '../LoginFormModal';
 import './Navigation.css';
 
-function Navigation({ isLoaded }){
-  const sessionUser = useSelector(state => state.session.user);
+function Navigation({ isLoaded }) {
+  const sessionUser = useSelector((state) => state.session.user);
 
   let sessionLinks;
   if (sessionUser) {
-    sessionLinks = (
-      <ProfileButton user={sessionUser} />
-    );
+    sessionLinks = <ProfileButton user={sessionUser} />;
   } else {
     sessionLinks = (
       <>
         <LoginFormModal />
-        <NavLink to="/signup">Sign Up</NavLink>
+        <NavLink to='/signup'>Sign Up</NavLink>
       </>
     );
   }
@@ -1828,7 +1833,9 @@ function Navigation({ isLoaded }){
   return (
     <ul>
       <li>
-        <NavLink exact to="/">Home</NavLink>
+        <NavLink exact to='/'>
+          Home
+        </NavLink>
         {isLoaded && sessionLinks}
       </li>
     </ul>
@@ -1842,18 +1849,18 @@ Here's an example of how `App.js` should look like now:
 
 ```js
 // frontend/src/App.js
-import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { Route, Switch } from "react-router-dom";
-import SignupFormPage from "./components/SignupFormPage";
-import * as sessionActions from "./store/session";
-import Navigation from "./components/Navigation";
+import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { Route, Switch } from 'react-router-dom';
+import SignupFormPage from './components/SignupFormPage';
+import * as sessionActions from './store/session';
+import Navigation from './components/Navigation';
 
 function App() {
   const dispatch = useDispatch();
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
-    dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
+    sessionActions.restoreUser(dispatch).then(() => setIsLoaded(true));
   }, [dispatch]);
 
   return (
@@ -1861,7 +1868,7 @@ function App() {
       <Navigation isLoaded={isLoaded} />
       {isLoaded && (
         <Switch>
-          <Route path="/signup">
+          <Route path='/signup'>
             <SignupFormPage />
           </Route>
         </Switch>
@@ -1873,12 +1880,57 @@ function App() {
 export default App;
 ```
 
-[test-redux-store-image]: https://appacademy-open-assets.s3-us-west-1.amazonaws.com/Modular-Curriculum/content/react-redux/topics/react-redux-auth/authenticate-me/assets/test-redux-store-setup.png
-[Font Awesome]: https://fontawesome.com/start
-[Choose a Font Awesome Icon]: https://fontawesome.com/icons?d=gallery&m=free
-[carrot icon]: https://fontawesome.com/icons/carrot?style=solid
-[Portals in React]: https://reactjs.org/docs/portals.html
+Here's an example for how `frontend/src/index.js` should look like:
 
-[Method 1]: #method-1-set-up-redux-from-scratch
-[Method 2]: #method-2-use-redux-template
+```js
+// frontend/src/index.js
+import React from 'react';
+import ReactDOM from 'react-dom';
+import './index.css';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App';
+import { ModalProvider } from './context/Modal';
+
+import configureStore from './store';
+import { restoreCSRF, csrfFetch } from './store/csrf';
+import * as sessionActions from './store/session';
+
+const store = configureStore();
+
+if (process.env.NODE_ENV !== 'production') {
+  restoreCSRF();
+
+  window.csrfFetch = csrfFetch;
+  window.store = store;
+  window.sessionActions = sessionActions;
+}
+
+function Root() {
+  return (
+    <Provider store={store}>
+      <ModalProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ModalProvider>
+    </Provider>
+  );
+}
+
+ReactDOM.render(
+  <React.StrictMode>
+    <Root />
+  </React.StrictMode>,
+  document.getElementById('root')
+);
+```
+
+[test-redux-store-image]: https://appacademy-open-assets.s3-us-west-1.amazonaws.com/Modular-Curriculum/content/react-redux/topics/react-redux-auth/authenticate-me/assets/test-redux-store-setup.png
+[font awesome]: https://fontawesome.com/start
+[choose a font awesome icon]: https://fontawesome.com/icons?d=gallery&m=free
+[carrot icon]: https://fontawesome.com/icons/carrot?style=solid
+[portals in react]: https://reactjs.org/docs/portals.html
+[method 1]: #method-1-set-up-redux-from-scratch
+[method 2]: #method-2-use-redux-template
 [http://localhost:3000]: http://localhost:3000
