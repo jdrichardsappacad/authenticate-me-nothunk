@@ -1470,7 +1470,7 @@ function App() {
   const dispatch = useDispatch();
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
-    dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
+    sessionActions.restoreUser(dispatch).then(() => setIsLoaded(true));
   }, [dispatch]);
 
   return (
