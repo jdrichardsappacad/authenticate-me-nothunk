@@ -57,7 +57,7 @@ Initialize an `enhancer` variable that will be set to different store enhancers 
 Create a `logger` variable that uses the default
 export of `redux-logger`. Then, grab the Redux dev tools compose enhancer with
 `window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__` and store it in a variable called
-`composeEnhancers`. You can use an **or** `||` to keep the Redux's original
+`composeEnhancers`. You can use an **or** (`||`) to keep the Redux's original
 `compose` as a fallback. Then set the `enhancer` variable to the return of the
 `composeEnhancers` function passing in `applyMiddleware` invoked with `logger`.
 
