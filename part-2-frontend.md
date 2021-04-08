@@ -57,7 +57,7 @@ Initialize an `enhancer` variable that will be set to different store enhancers 
 Create a `logger` variable that uses the default
 export of `redux-logger`. Then, grab the Redux dev tools compose enhancer with
 `window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__` and store it in a variable called
-`composeEnhancers`. You can use an **or** `||` to keep the Redux's original
+`composeEnhancers`. You can use an **or** (`||`) to keep the Redux's original
 `compose` as a fallback. Then set the `enhancer` variable to the return of the
 `composeEnhancers` function passing in `applyMiddleware` invoked with `logger`.
 
@@ -174,7 +174,9 @@ initialize React inside of the `frontend` folder:
 npx create-react-app . --template @appacademy/react-redux-v17 --use-npm
 ```
 
-### Test the Redux Store setup
+---
+
+## Test the Redux Store setup
 
 **From this moment, [Method 1] and [Method 2] have the same instructions.**
 
@@ -827,7 +829,7 @@ export const restoreUser = async (dispatch) => {
 // ...
 ```
 
-Here's an example of how to test the `restoreUser` function:
+Here's an example of how to test the `restoreUser` function in the browser:
 
 ```js
 window.store.dispatch(window.sessionActions.restoreUser());
@@ -848,7 +850,7 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
     sessionActions
-      .restoreUser(window.store.dispatch)
+      .restoreUser(dispatch)
       .then(() => setIsLoaded(true));
   }, [dispatch]);
 
@@ -1428,7 +1430,7 @@ function ProfileButton({ user }) {
 
   const logout = (e) => {
     e.preventDefault();
-    dispatch(sessionActions.logout());
+    sessionActions.logout(dispatch);
   };
 
   return (
@@ -1468,7 +1470,7 @@ function App() {
   const dispatch = useDispatch();
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
-    dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
+    sessionActions.restoreUser(dispatch).then(() => setIsLoaded(true));
   }, [dispatch]);
 
   return (
