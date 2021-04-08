@@ -850,7 +850,7 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
     sessionActions
-      .restoreUser(window.store.dispatch)
+      .restoreUser(dispatch)
       .then(() => setIsLoaded(true));
   }, [dispatch]);
 
