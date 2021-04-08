@@ -829,7 +829,7 @@ export const restoreUser = async (dispatch) => {
 // ...
 ```
 
-Here's an example of how to test the `restoreUser` function:
+Here's an example of how to test the `restoreUser` function in the browser:
 
 ```js
 window.store.dispatch(window.sessionActions.restoreUser());
