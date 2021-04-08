@@ -174,7 +174,9 @@ initialize React inside of the `frontend` folder:
 npx create-react-app . --template @appacademy/react-redux-v17 --use-npm
 ```
 
-### Test the Redux Store setup
+---
+
+## Test the Redux Store setup
 
 **From this moment, [Method 1] and [Method 2] have the same instructions.**
 
