@@ -23,8 +23,6 @@ function SignupFormPage() {
         .signup(dispatch, { email, username, password })
         .catch((res) => {
           return setErrors(['Invalid Signup']);
-          // There is no res.data when it hits this catch. Errors are in the backend terminal returned in the middleware
-          // if (res.data && res.data.errors) setErrors(res.data.errors);
         });
     }
     return setErrors([
